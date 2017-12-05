@@ -4,8 +4,9 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.os.Bundle;
-import android.support.v4.app.Fragment;
 
+
+import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.NavUtils;
 import android.util.Log;
@@ -30,8 +31,8 @@ import java.util.Date;
 import java.util.Locale;
 
 /*
- * Created by klaidley on 4/14/2015.
- */
+* Created by klaidley on 4/14/2015.
+*/
 public class TripFragment extends Fragment {
 
     private Trip mTrip;
@@ -78,8 +79,8 @@ public class TripFragment extends Fragment {
             sDate = (Date)intent.getSerializableExtra(Trip.EXTRA_TRIP_START_DATE);
             eDate = (Date)intent.getSerializableExtra(Trip.EXTRA_TRIP_END_DATE);
             shared = intent.getBooleanExtra(Trip.EXTRA_TRIP_PUBLIC, false);
-			
-			// todo: Activity 3.1.6
+
+
 
             //set the trip data on the mTrip object
             mTrip = new Trip();
@@ -90,8 +91,7 @@ public class TripFragment extends Fragment {
             mTrip.setEndDate(eDate);
             mTrip.setShared(shared);
 
-            //Determine if the screen widgets will be enabled for editing
-			// todo: Activity 3.1.6
+
             if (mPublicView)
                 mEnabled = false;
         }
@@ -168,7 +168,7 @@ public class TripFragment extends Fragment {
         switch (item.getItemId()) {
             case android.R.id.home:
                 if (NavUtils.getParentActivityName(getActivity()) != null) {
-                    NavUtils.navigateUpFromSameTask(getActivity());
+                    finishWithResults();
                 }
                 return true;
             case R.id.action_post:
@@ -182,10 +182,10 @@ public class TripFragment extends Fragment {
                     dialog.show();
                 } else {
                     //save the data to Backendless
-					
-					updateTrip(item);
+
+                    updateTrip(item);
                 }
-				return true;
+                return true;
             case R.id.action_delete:
                 //check if the trip is enabled for editing
                 if (!mEnabled) {
@@ -198,10 +198,10 @@ public class TripFragment extends Fragment {
                 } else {
                     //delete the record from Backendless if it is an existing record
 
-					deleteTrip(item);
-					
+                    deleteTrip(item);
+
                 }
-				return true;
+                return true;
             case R.id.action_logout:
                 Backendless.UserService.logout(new AsyncCallback<Void>() {
                     @Override
@@ -286,8 +286,8 @@ public class TripFragment extends Fragment {
             AlertDialog dialog = builder.create();
             dialog.show();
         }
-		else {
-			menuItem.setActionView(new ProgressBar(getActivity()));
+        else {
+            menuItem.setActionView(new ProgressBar(getActivity()));
 
             //  save the trip in backendless
             mTrip.setName(name);
@@ -296,12 +296,13 @@ public class TripFragment extends Fragment {
             mTrip.setEndDate(eDate);
             mTrip.setShared(shared);
 
+
             // save on a new thread and wait for the save to finish
             Thread thread = new Thread(new Runnable() {
                 @Override
                 public void run() {
                     Backendless.Data.of(Trip.class).save(mTrip);
-                    getActivity().finish();
+
                 }
             });
             thread.start();
@@ -316,32 +317,42 @@ public class TripFragment extends Fragment {
                 AlertDialog dialog = builder.create();
                 dialog.show();
             }
+            finishWithResults();
 
         }
     }
+    private void finishWithResults(){
+        Intent intent = getActivity().getIntent();
+        intent.putExtra(Trip.EXTRA_TRIP_PUBLIC_VIEW, mPublicView);
+        getActivity().setResult(Activity.RESULT_OK, intent);
+        getActivity().finish();
+    }
 
     private void deleteTrip(MenuItem menuItem) {
-		if (mTrip.getObjectId() != null){
-		    final Trip deleteTrip = mTrip;
-		    Thread deleteThread = new Thread(new Runnable() {
+        if (mTrip.getObjectId() != null){
+            final Trip deleteTrip = mTrip;
+            Thread deleteThread = new Thread(new Runnable() {
                 @Override
                 public void run() {
                     Backendless.Data.of(Trip.class).remove(deleteTrip);
-                    getActivity().finish();
+
                 }
             });
-		    try{
-		        deleteThread.join();
+            try{
+                deleteThread.join();
             } catch (InterruptedException e){
-		        Log.e(TAG, "Deleting trip failed: " + e.getMessage());
-		        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-		        builder.setMessage(e.getMessage());
-		        builder.setTitle(R.string.delete_error_title);
-		        builder.setPositiveButton(android.R.string.ok, null);
-		        AlertDialog dialog = builder.create();
-		        dialog.show();
+                Log.e(TAG, "Deleting trip failed: " + e.getMessage());
+                AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+                builder.setMessage(e.getMessage());
+                builder.setTitle(R.string.delete_error_title);
+                builder.setPositiveButton(android.R.string.ok, null);
+                AlertDialog dialog = builder.create();
+                dialog.show();
             }
+            finishWithResults();
         }
     }
 
 }
+
+

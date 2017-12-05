@@ -1,5 +1,6 @@
 package org.pltw.examples.triptracker;
 
+import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.os.Bundle;
@@ -20,12 +21,14 @@ import android.widget.ListView;
 import android.widget.TextView;
 
 import com.backendless.Backendless;
+
 import com.backendless.BackendlessUser;
 import com.backendless.async.callback.AsyncCallback;
 import com.backendless.async.callback.BackendlessCallback;
 import com.backendless.exceptions.BackendlessFault;
-import com.backendless.persistence.BackendlessDataQuery;
 import com.backendless.persistence.DataQueryBuilder;
+import com.backendless.persistence.BackendlessDataQuery;
+import com.backendless.persistence.QueryOptions;
 
 import org.w3c.dom.Text;
 
@@ -34,8 +37,8 @@ import java.util.List;
 import java.util.zip.Inflater;
 
 /*
- * Created by klaidley on 4/13/2015.
- */
+* Created by klaidley on 4/13/2015.
+*/
 public class TripListFragment extends ListFragment {
 
     private static final String TAG = "TripListFragment";
@@ -75,8 +78,8 @@ public class TripListFragment extends ListFragment {
         //register the context menu
         ListView listView = (ListView)v.findViewById(android.R.id.list);
         registerForContextMenu(listView);
-		
-		// todo: Activity 3.1.8
+
+        // todo: Activity 3.1.8
 
         return v;
     }
@@ -98,13 +101,13 @@ public class TripListFragment extends ListFragment {
         intent.putExtra(Trip.EXTRA_TRIP_END_DATE, trip.getEndDate());
         intent.putExtra(Trip.EXTRA_TRIP_PUBLIC, trip.isShared());
         intent.putExtra(Trip.EXTRA_TRIP_PUBLIC_VIEW, mPublicView);
-		
-        startActivity(intent);
+        intent.putExtra(Trip.EXTRA_TRIP_OWNER_ID, trip.getOwnerId());
+        startActivityForResult(intent, Activity.RESULT_OK);
     }
 
     @Override
     public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
-      getActivity().getMenuInflater().inflate(R.menu.menu_trip_list_item_context, menu);
+        getActivity().getMenuInflater().inflate(R.menu.menu_trip_list_item_context, menu);
     }
 
     @Override
@@ -128,14 +131,25 @@ public class TripListFragment extends ListFragment {
         super.onCreateOptionsMenu(menu, inflater);
         inflater.inflate(R.menu.menu_trips, menu);
     }
+    @Override
+    public void onPrepareOptionsMenu(Menu menu){
+        //toggle between Public Trips and My Trips action bar items
+        if (mPublicView) {
+            menu.findItem(R.id.action_public_trips).setVisible(false);
+            menu.findItem(R.id.action_my_trips).setVisible(true);
+        } else {
+            menu.findItem(R.id.action_public_trips).setVisible(true);
+            menu.findItem(R.id.action_my_trips).setVisible(false);
+        }
+    }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         Intent intent;
         switch (item.getItemId()) {
             case R.id.action_refresh:
-				// todo: Activity 3.1.8
-				
+                // todo: Activity 3.1.8
+
                 //refresh the list of trips
                 refreshTripList();
                 return true;
@@ -149,11 +163,21 @@ public class TripListFragment extends ListFragment {
                 startActivity(intent);
                 return true;
 
-			// todo: Activity 3.1.6
-			
+            case R.id.action_public_trips:
+                intent = new Intent(getActivity(), TripActivity.class);
+                intent.putExtra(Trip.EXTRA_TRIP_PUBLIC_VIEW, true);
+                startActivity(intent);
+                return true;
+
+            case R.id.action_my_trips:
+                intent = new Intent(getActivity(), TripActivity.class);
+                intent.putExtra(Trip.EXTRA_TRIP_PUBLIC_VIEW, false);
+                startActivity(intent);
+                return true;
+
             case R.id.action_logout:
-				// Logs user out and  resets Backendless CurrentUser to null
-                Backendless.UserService.logout(new AsyncCallback<Void>() {
+                // Logs user out and  resets Backendless CurrentUser to null
+                Backendless.UserService.logout(new BackendlessCallback<Void>() {
                     @Override
                     public void handleResponse(Void v) {
                         boolean isValidLogin = Backendless.UserService.isValidLogin();
@@ -189,51 +213,67 @@ public class TripListFragment extends ListFragment {
         @Override
         public View getView(int position, View convertView, ViewGroup parent) {
 
-			if (convertView == null){
-			    convertView = getActivity().getLayoutInflater().inflate(R.layout.fragment_trip_list_item, null);
+            if (convertView == null){
+                convertView = getActivity().getLayoutInflater().inflate(R.layout.fragment_trip_list_item, null);
             }
             Trip trip = getItem(position);
-			TextView tripName = (TextView)convertView.findViewById(R.id.trip_list_item_textName);
-			tripName.setText(trip.getName());
-			Log.i(TAG, trip.getName());
-			TextView tripStartDate = (TextView)convertView.findViewById(R.id.trip_list_item_textStartDate);
-			tripStartDate.setText(DateFormat.format("MM-dd-yyyy", trip.getStartDate()));
-			return convertView;
-		
+            TextView tripName = (TextView)convertView.findViewById(R.id.trip_list_item_textName);
+            tripName.setText(trip.getName());
+            Log.i(TAG, trip.getName());
+            TextView tripStartDate = (TextView)convertView.findViewById(R.id.trip_list_item_textStartDate);
+            tripStartDate.setText(DateFormat.format("MM-dd-yyyy", trip.getStartDate()));
+            return convertView;
+
         }
     }
 
     private void deleteTrip(Trip trip) {
 
-		final Trip deleteTrip = trip;
-		Thread deleteThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                Backendless.Data.of(Trip.class).remove(deleteTrip);
-                Log.i(TAG, deleteTrip.getName() + " removed.");
-                refreshTripList();
+        if (trip.getOwnerId().equals(Backendless.UserService.loggedInUser())) {
+            final Trip deleteTrip = trip;
+            Thread deleteThread = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    Backendless.Data.of(Trip.class).remove(deleteTrip);
+                    Log.i(TAG, deleteTrip.getName() + " removed.");
+                    refreshTripList();
+                }
+            });
+            deleteThread.start();
+            try {
+                deleteThread.join();
+            } catch (InterruptedException e) {
+                Log.e(TAG, "Deleting trip failed: " + e.getMessage());
+                AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+                builder.setMessage(e.getMessage());
+                builder.setTitle(R.string.delete_error_title);
+                builder.setPositiveButton(android.R.string.ok, null);
+                AlertDialog dialog = builder.create();
+                dialog.show();
             }
-        });
-		deleteThread.start();
-		try {
-		    deleteThread.join();
-        } catch (InterruptedException e){
-		    Log.e(TAG, "Deleting trip failed: " + e.getMessage());
-		    AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-		    builder.setMessage(e.getMessage());
-		    builder.setTitle(R.string.delete_error_title);
-		    builder.setPositiveButton(android.R.string.ok, null);
-		    AlertDialog dialog = builder.create();
-		    dialog.show();
-        }
 
+        } else {
+            AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+            builder.setMessage(getString(R.string.delete_error_message));
+            builder.setMessage(getString(R.string.delete_error_title));
+            builder.setPositiveButton(android.R.string.ok, null);
+            AlertDialog dialog = builder.create();
+            dialog.show();
+        }
     }
 
     private void refreshTripList() {
 
         BackendlessUser user = Backendless.UserService.CurrentUser();
         DataQueryBuilder dq = DataQueryBuilder.create();
-        dq.setWhereClause("ownerId='"+ user.getObjectId()+"'");
+        dq.setSortBy("created");
+        if (mPublicView){
+            dq.setWhereClause("shared = true");
+        }
+        else{
+            dq.setWhereClause("ownerId='"+ user.getObjectId()+"'");
+        }
+
 
         Backendless.Persistence.of(Trip.class).find(dq, new AsyncCallback<List<Trip>>() {
             @Override
@@ -243,6 +283,7 @@ public class TripListFragment extends ListFragment {
                 for(int i=0; i<response.size();i++){
                     mTrips.add(response.get(i));
                 }
+                ArrayListSorter.insertionSort(mTrips);
                 ((TripAdapter)getListAdapter()).notifyDataSetChanged();
             }
 
@@ -262,3 +303,4 @@ public class TripListFragment extends ListFragment {
 
 
 }
+

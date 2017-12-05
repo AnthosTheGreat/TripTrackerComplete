@@ -25,9 +25,18 @@ public class LoginActivity extends AppCompatActivity {
     private Button mSignUpButton;
     private Button mLoginButton;
     private TextView mSignUpTextView;
-    private final String be_app_id = "1EAF3D4E-EF8D-1B40-FF73-8A866FDE0A00";
-    private final String be_android_api_key = "BBE3AFF9-19AB-EA7E-FFD7-B24FD3B50C00";
+    private final String be_app_id = "1D3518A2-AD14-EA8C-FFE3-767E44663300";
+    private final String be_android_api_key = "47444F30-4D48-0B5E-FFF5-872A9965FB00";
     private final String TAG = this.getClass().getName();
+
+    public void warnUser(String message){
+        AlertDialog.Builder builder = new AlertDialog.Builder(LoginActivity.this);
+        builder.setMessage(message);
+        builder.setTitle(R.string.authentication_error_title);
+        builder.setPositiveButton(android.R.string.ok, null);
+        AlertDialog dialog = builder.create();
+        dialog.show();
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,63 +58,56 @@ public class LoginActivity extends AppCompatActivity {
     }
 
 
-        @Override
-        public void onBackPressed(){
-            mSignUpButton.setVisibility(View.GONE);
-            mNameEdit.setVisibility(View.GONE);
-            mLoginButton.setVisibility(View.VISIBLE);
-            mSignUpTextView.setVisibility(View.VISIBLE);
-        }
-        private class SignUpTextOnClick implements View.OnClickListener {
+    @Override
+    public void onBackPressed(){
+        mSignUpButton.setVisibility(View.GONE);
+        mNameEdit.setVisibility(View.GONE);
+        mLoginButton.setVisibility(View.VISIBLE);
+        mSignUpTextView.setVisibility(View.VISIBLE);
+    }
+    private class SignUpTextOnClick implements View.OnClickListener {
 
-            @Override
-            public void onClick(View view) {
-                mSignUpButton.setVisibility(View.VISIBLE);
-                mNameEdit.setVisibility(View.VISIBLE);
-                mLoginButton.setVisibility(View.GONE);
-                mSignUpTextView.setVisibility(View.GONE);
-            }
+        @Override
+        public void onClick(View view) {
+            mSignUpButton.setVisibility(View.VISIBLE);
+            mNameEdit.setVisibility(View.VISIBLE);
+            mLoginButton.setVisibility(View.GONE);
+            mSignUpTextView.setVisibility(View.GONE);
         }
-    public void warnUser(String message){
-                AlertDialog.Builder builder = new AlertDialog.Builder(LoginActivity.this);
-                builder.setMessage(message);
-                builder.setTitle(R.string.authentication_error_title);
-                builder.setPositiveButton(android.R.string.ok, null);
-                AlertDialog dialog = builder.create();
-                dialog.show();
-            }
+    }
+
 
     private class LoginButtonOnClick implements View.OnClickListener{
-            @Override
-            public void onClick(final View view){
-                String email = mEmailEdit.getText().toString();
-                String password = mPasswordEdit.getText().toString();
-                email = email.trim();
-                password = password.trim();
-                if (!email.isEmpty() && !password.isEmpty()){
-                    final ProgressDialog pDialog = ProgressDialog.show(LoginActivity.this,
-                            "Please Wait!",
-                            "Logging in...",
-                            true);
-                    Backendless.UserService.login(email, password, new AsyncCallback<BackendlessUser>(){
-                        @Override
-                        public void handleResponse (BackendlessUser response){
-                            Toast.makeText(view.getContext(), response.getProperty("name") + " logged in successfully!", Toast.LENGTH_SHORT).show();
-                            Intent intent = new Intent(LoginActivity.this, TripListActivity.class);
-                            startActivity(intent);
-                        }
-                        @Override
-                        public void handleFault(BackendlessFault fault){
-                            warnUser(fault.getMessage());
-                            pDialog.dismiss();
+        @Override
+        public void onClick(final View view){
+            String email = mEmailEdit.getText().toString();
+            String password = mPasswordEdit.getText().toString();
+            email = email.trim();
+            password = password.trim();
+            if (!email.isEmpty() && !password.isEmpty()){
+                final ProgressDialog pDialog = ProgressDialog.show(LoginActivity.this,
+                        "Please Wait!",
+                        "Logging in...",
+                        true);
+                Backendless.UserService.login(email, password, new AsyncCallback<BackendlessUser>(){
+                    @Override
+                    public void handleResponse (BackendlessUser response){
+                        Toast.makeText(view.getContext(), response.getProperty("name") + " logged in successfully!", Toast.LENGTH_SHORT).show();
+                        Intent intent = new Intent(LoginActivity.this, TripListActivity.class);
+                        startActivity(intent);
+                    }
+                    @Override
+                    public void handleFault(BackendlessFault fault){
+                        warnUser(fault.getMessage());
+                        pDialog.dismiss();
 
-                        }
-                    });
-                }
-                else{
-                    warnUser(getString(R.string.empty_field_signup_error));
-                }
+                    }
+                });
             }
+            else{
+                warnUser(getString(R.string.empty_field_signup_error));
+            }
+        }
     }
 
     private class SignUpButtonOnClick implements View.OnClickListener {
@@ -121,7 +123,7 @@ public class LoginActivity extends AppCompatActivity {
 
             if (!userEmail.isEmpty() &&!password.isEmpty() && !name.isEmpty()) {
 
-              /* register the user in Backendless */
+             /* register the user in Backendless */
                 BackendlessUser newUser = new BackendlessUser();
                 newUser.setEmail(userEmail);
                 newUser.setPassword(password);
@@ -155,3 +157,5 @@ public class LoginActivity extends AppCompatActivity {
     }
 
 }
+
+

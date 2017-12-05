@@ -6,8 +6,8 @@ import android.support.v4.app.FragmentManager;
 import android.support.v7.app.AppCompatActivity;
 
 /*
- * Created by klaidley on 4/14/2015.
- */
+* Created by klaidley on 4/14/2015.
+*/
 public class TripListActivity extends AppCompatActivity {
 
     @Override
@@ -27,3 +27,4 @@ public class TripListActivity extends AppCompatActivity {
         }
     }
 }
+
