@@ -1,7 +1,9 @@
 package org.pltw.examples.triptracker;
 
 import android.app.Activity;
-import android.app.AlertDialog;
+import android.support.v7.app.AlertDialog;
+import android.view.View;
+
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v4.app.ListFragment;
@@ -16,35 +18,35 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.ListAdapter;
+import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.ListView;
 import android.widget.TextView;
 
 import com.backendless.Backendless;
-
 import com.backendless.BackendlessUser;
 import com.backendless.async.callback.AsyncCallback;
-import com.backendless.async.callback.BackendlessCallback;
 import com.backendless.exceptions.BackendlessFault;
 import com.backendless.persistence.DataQueryBuilder;
-import com.backendless.persistence.BackendlessDataQuery;
-import com.backendless.persistence.QueryOptions;
-
-import org.w3c.dom.Text;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.zip.Inflater;
 
 /*
-* Created by klaidley on 4/13/2015.
-*/
+ * Created by klaidley on 4/13/2015.
+ */
 public class TripListFragment extends ListFragment {
-
+    EditText search_et;
+    TextView noData;
+    ImageButton search_img;
     private static final String TAG = "TripListFragment";
     private ArrayList<Trip> mTrips;
     private boolean mPublicView = false;
-
+    @Override
+    public void onResume() {
+        refreshTripList();
+        super.onResume();
+    }
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -74,11 +76,50 @@ public class TripListFragment extends ListFragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup parent, Bundle savedInstanceState) {
 
         View v = inflater.inflate(R.layout.fragment_trip_list, parent, false);
+        search_et = (EditText) v.findViewById(R.id.search_et);
+        search_img = (ImageButton) v.findViewById(R.id.search_img);
 
         //register the context menu
         ListView listView = (ListView)v.findViewById(android.R.id.list);
         registerForContextMenu(listView);
+        search_img.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String searchText = search_et.getText().toString().trim();
+                boolean found = false;
+                int tries = mTrips.size()+1;
+                while(found ==false){
+                    tries-=1;
+                    if (mTrips.size()==0){
+                        ((TripAdapter)getListAdapter()).notifyDataSetChanged();
+                        found = true;
+                        break;
+                    }
+                    int compare =searchText.compareToIgnoreCase((mTrips.get(mTrips.size()/2)).getName());
+                    if (compare==0){
+                        found = true;
+                        Trip searchTrip = mTrips.get(mTrips.size()/2);
+                        mTrips.clear();
+                        mTrips.add(searchTrip);
+                        ((TripAdapter)getListAdapter()).notifyDataSetChanged();
 
+                    }
+                    else if(compare <0){
+
+                        int lengthFinal= mTrips.size()/2;
+                        while(lengthFinal<mTrips.size()){
+                            mTrips.remove(mTrips.size()-1);
+                        }
+                    }
+                    else if(compare>0){
+                        int lengthFinal = mTrips.size()/2;
+                        while(lengthFinal<mTrips.size()){
+                            mTrips.remove(mTrips.get(0));
+                        }
+                    }
+                }
+            }
+        });
         // todo: Activity 3.1.8
 
         return v;
@@ -87,6 +128,7 @@ public class TripListFragment extends ListFragment {
     public void onListItemClick(ListView l, View v, int position, long id) {
         // get the Trip
         Trip trip = (Trip)(getListAdapter()).getItem(position);
+
 
         // start an instance of TripActivity
         // pass parameters using the intent object: all the object attributes of the trip to be viewed/edited.
@@ -100,9 +142,12 @@ public class TripListFragment extends ListFragment {
         intent.putExtra(Trip.EXTRA_TRIP_START_DATE, trip.getStartDate());
         intent.putExtra(Trip.EXTRA_TRIP_END_DATE, trip.getEndDate());
         intent.putExtra(Trip.EXTRA_TRIP_PUBLIC, trip.isShared());
-        intent.putExtra(Trip.EXTRA_TRIP_PUBLIC_VIEW, mPublicView);
         intent.putExtra(Trip.EXTRA_TRIP_OWNER_ID, trip.getOwnerId());
+        intent.putExtra(Trip.EXTRA_TRIP_PUBLIC_VIEW, mPublicView);
         startActivityForResult(intent, Activity.RESULT_OK);
+
+
+        // todo: Activity 3.1.5
     }
 
     @Override
@@ -125,11 +170,11 @@ public class TripListFragment extends ListFragment {
         }
         return super.onContextItemSelected(item);
     }
-
     @Override
-    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
-        super.onCreateOptionsMenu(menu, inflater);
-        inflater.inflate(R.menu.menu_trips, menu);
+    public void onActivityResult(int requestCode,int resultCode, Intent intent) {
+        if (resultCode == Activity.RESULT_OK) {
+            mPublicView = intent.getBooleanExtra(Trip.EXTRA_TRIP_PUBLIC_VIEW, false);
+        }
     }
     @Override
     public void onPrepareOptionsMenu(Menu menu){
@@ -142,11 +187,27 @@ public class TripListFragment extends ListFragment {
             menu.findItem(R.id.action_my_trips).setVisible(false);
         }
     }
+    @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+        super.onCreateOptionsMenu(menu, inflater);
+        inflater.inflate(R.menu.menu_trips, menu);
+    }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         Intent intent;
         switch (item.getItemId()) {
+            case R.id.action_my_trips:
+                intent = new Intent(getActivity(), TripListActivity.class);
+                intent.putExtra(Trip.EXTRA_TRIP_PUBLIC_VIEW, false);
+                startActivity(intent);
+                return true;
+            case R.id.action_public_trips:
+                intent = new Intent(getActivity(), TripListActivity.class);
+                intent.putExtra(Trip.EXTRA_TRIP_PUBLIC_VIEW, true);
+                startActivity(intent);
+                return true;
+
             case R.id.action_refresh:
                 // todo: Activity 3.1.8
 
@@ -163,21 +224,11 @@ public class TripListFragment extends ListFragment {
                 startActivity(intent);
                 return true;
 
-            case R.id.action_public_trips:
-                intent = new Intent(getActivity(), TripActivity.class);
-                intent.putExtra(Trip.EXTRA_TRIP_PUBLIC_VIEW, true);
-                startActivity(intent);
-                return true;
-
-            case R.id.action_my_trips:
-                intent = new Intent(getActivity(), TripActivity.class);
-                intent.putExtra(Trip.EXTRA_TRIP_PUBLIC_VIEW, false);
-                startActivity(intent);
-                return true;
+            // todo: Activity 3.1.6
 
             case R.id.action_logout:
                 // Logs user out and  resets Backendless CurrentUser to null
-                Backendless.UserService.logout(new BackendlessCallback<Void>() {
+                Backendless.UserService.logout(new AsyncCallback<Void>() {
                     @Override
                     public void handleResponse(Void v) {
                         boolean isValidLogin = Backendless.UserService.isValidLogin();
@@ -213,57 +264,50 @@ public class TripListFragment extends ListFragment {
         @Override
         public View getView(int position, View convertView, ViewGroup parent) {
 
-            if (convertView == null){
-                convertView = getActivity().getLayoutInflater().inflate(R.layout.fragment_trip_list_item, null);
+            if(convertView==null){
+                convertView= getActivity().getLayoutInflater().inflate(R.layout.fragment_trip_list_item,  null);
             }
-            Trip trip = getItem(position);
-            TextView tripName = (TextView)convertView.findViewById(R.id.trip_list_item_textName);
-            tripName.setText(trip.getName());
-            Log.i(TAG, trip.getName());
-            TextView tripStartDate = (TextView)convertView.findViewById(R.id.trip_list_item_textStartDate);
-            tripStartDate.setText(DateFormat.format("MM-dd-yyyy", trip.getStartDate()));
+            Trip trip= getItem(position);
+            TextView nameTextView = (TextView)convertView.findViewById(R.id.trip_list_item_textName);
+            nameTextView.setText(trip.getName());
+            TextView dateTextView = (TextView)convertView.findViewById(R.id.trip_list_item_textStartDate);
+            dateTextView.setText(trip.getStartDate().toString());
             return convertView;
 
         }
     }
 
     private void deleteTrip(Trip trip) {
-
-        if (trip.getOwnerId().equals(Backendless.UserService.loggedInUser())) {
-            final Trip deleteTrip = trip;
-            Thread deleteThread = new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    Backendless.Data.of(Trip.class).remove(deleteTrip);
-                    Log.i(TAG, deleteTrip.getName() + " removed.");
-                    refreshTripList();
-                }
-            });
-            deleteThread.start();
-            try {
-                deleteThread.join();
-            } catch (InterruptedException e) {
-                Log.e(TAG, "Deleting trip failed: " + e.getMessage());
-                AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-                builder.setMessage(e.getMessage());
-                builder.setTitle(R.string.delete_error_title);
-                builder.setPositiveButton(android.R.string.ok, null);
-                AlertDialog dialog = builder.create();
-                dialog.show();
-            }
-
-        } else {
-            AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-            builder.setMessage(getString(R.string.delete_error_message));
-            builder.setMessage(getString(R.string.delete_error_title));
+        BackendlessUser currentUser = Backendless.UserService.CurrentUser();
+        if (!currentUser.getObjectId().equals(trip.getOwnerId())){
+            AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+            builder.setMessage(R.string.delete_error_message);
+            builder.setTitle(R.string.delete_error_title);
             builder.setPositiveButton(android.R.string.ok, null);
             AlertDialog dialog = builder.create();
             dialog.show();
         }
+        else {
+
+
+            final Trip deleteTrip = trip;
+            Thread deleteTread = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    Backendless.Data.of(Trip.class).remove(deleteTrip);
+                    Log.i(TAG, deleteTrip.getName() + " remove");
+                    refreshTripList();
+                }
+            });
+            deleteTread.start();
+        }
+        // todo: Activity 3.1.5
+
     }
 
     private void refreshTripList() {
 
+        // todo: Activity 3.1.4
         BackendlessUser user = Backendless.UserService.CurrentUser();
         DataQueryBuilder dq = DataQueryBuilder.create();
         dq.setSortBy("created");
@@ -293,11 +337,6 @@ public class TripListFragment extends ListFragment {
             }
         });
 
-    }
-    @Override
-    public void onResume() {
-        refreshTripList();
-        super.onResume();
     }
 
 

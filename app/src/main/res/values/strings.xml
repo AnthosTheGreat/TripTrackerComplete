@@ -38,4 +38,5 @@
     <string name="action_new">New</string>
     <string name="action_public_trips">Public Trips</string>
     <string name="action_my_trips">My Trips</string>
-    </resources>
+    <string name="search">Search for trips</string>
+</resources>

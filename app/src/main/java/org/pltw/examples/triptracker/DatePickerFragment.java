@@ -1,12 +1,12 @@
 package org.pltw.examples.triptracker;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v4.app.DialogFragment;
+import android.support.v7.app.AlertDialog;
 import android.view.View;
 import android.widget.DatePicker;
 
@@ -15,8 +15,9 @@ import java.util.Date;
 import java.util.GregorianCalendar;
 
 /**
- * Created by klaidley on 04/14/2015.
+ * Created by klaidley on 11/14/2017.
  */
+
 public class DatePickerFragment extends DialogFragment {
 
     public static final String EXTRA_DATE = "org.pltw.examples.triptracker.DATE";
@@ -92,4 +93,3 @@ public class DatePickerFragment extends DialogFragment {
         }
     }
 }
-
